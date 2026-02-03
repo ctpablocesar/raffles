@@ -29,6 +29,7 @@ export default function RafflePage() {
     AWARD: '',
     PHONE_NUMBER: ''
   })
+  const [loading, setLoading] = useState(true)
 
   const numbers = useMemo(() => {
     return Array.from({ length: 100 }, (_, i) => {
@@ -43,6 +44,7 @@ export default function RafflePage() {
   }, [selectedNumbers, data])
 
   const fetchData = async () => {
+    setLoading(true)
     const response = await fetch('/api', {
       method: 'GET'
     })
@@ -51,6 +53,7 @@ export default function RafflePage() {
     data.SOLD_NUMBERS = new Set(data.SOLD_NUMBERS)
     data.DRAW_DATE = new Date(data.DRAW_DATE)
     setData(data)
+    setLoading(false)
   }
 
   const handleNumberClick = (number: number) => {
@@ -90,6 +93,17 @@ export default function RafflePage() {
       await fetchData()
     })()
   }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          <p className="mt-4">Cargando datos del sorteo...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (data.WINNING_NUMBER !== null) {
     return (
