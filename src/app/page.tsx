@@ -1,65 +1,152 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { RaffleCountdown } from '@/components/raffle-countdown'
+import { RaffleGrid } from '@/components/raffle-grid'
+import { RaffleHeader } from '@/components/raffle-header'
+import { RaffleLegend } from '@/components/raffle-legend'
+import type { NumberStatus } from '@/components/raffle-number'
+import { RaffleSummary } from '@/components/raffle-summary'
+import { RaffleWinner } from '@/components/raffle-winner'
+import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react'
+
+interface Data {
+  SOLD_NUMBERS: Set<number>
+  PRICE_PER_NUMBER: number
+  DRAW_DATE: Date
+  WINNING_NUMBER: number | null
+  AWARD: string
+  PHONE_NUMBER: string
+}
+
+export default function RafflePage() {
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([])
+  const [data, setData] = useState<Data>({
+    SOLD_NUMBERS: new Set([]),
+    PRICE_PER_NUMBER: 0,
+    DRAW_DATE: new Date(),
+    WINNING_NUMBER: null,
+    AWARD: '',
+    PHONE_NUMBER: ''
+  })
+
+  const numbers = useMemo(() => {
+    return Array.from({ length: 100 }, (_, i) => {
+      let status: NumberStatus = 'available'
+      if (data.SOLD_NUMBERS.has(i)) {
+        status = 'sold'
+      } else if (selectedNumbers.includes(i)) {
+        status = 'selected'
+      }
+      return { number: i, status }
+    })
+  }, [selectedNumbers, data])
+
+  const fetchData = async () => {
+    const response = await fetch('/api', {
+      method: 'GET'
+    })
+
+    const data = await response.json()
+    data.SOLD_NUMBERS = new Set(data.SOLD_NUMBERS)
+    data.DRAW_DATE = new Date(data.DRAW_DATE)
+    setData(data)
+  }
+
+  const handleNumberClick = (number: number) => {
+    if (data.SOLD_NUMBERS.has(number)) return
+
+    setSelectedNumbers((prev) =>
+      prev.includes(number)
+        ? prev.filter((n) => n !== number)
+        : [...prev, number].sort((a, b) => a - b)
+    )
+  }
+
+  const handleRemove = (number: number) => {
+    setSelectedNumbers((prev) => prev.filter((n) => n !== number))
+  }
+
+  const handleCheckout = () => {
+    if (selectedNumbers.length === 0) return
+    const message = `¡Hola! Quiero participar en la Gran Rifa 2026.\n\nHe seleccionado los siguientes números:\n${selectedNumbers
+      .map((n) => `- ${n.toString().padStart(2, '0')}`)
+      .join('\n')}\n\nEl total a pagar es de $${(
+      selectedNumbers.length * data.PRICE_PER_NUMBER
+    ).toLocaleString()} MXN.\n\n¿Podrían indicarme los pasos a seguir para completar mi compra? ¡Gracias!`
+
+    const encodedMessage = encodeURIComponent(message)
+    window.open(
+      `https://wa.me/${data.PHONE_NUMBER}?text=${encodedMessage}`,
+      '_blank'
+    )
+  }
+
+  const availableCount = numbers.filter((n) => n.status === 'available').length
+  const soldCount = numbers.filter((n) => n.status === 'sold').length
+
+  useEffect(() => {
+    ;(async () => {
+      await fetchData()
+    })()
+  }, [])
+
+  if (data.WINNING_NUMBER !== null) {
+    return (
+      <RaffleWinner
+        winningNumber={data.WINNING_NUMBER ?? 0}
+        prize={data.AWARD}
+        drawDate={data.DRAW_DATE}
+      />
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="min-h-screen bg-background pb-32">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+        <RaffleHeader
+          title="Gran Rifa 2026"
+          description="Selecciona tus números de la suerte y participa por increíbles premios"
+          prize={data.AWARD}
+          price={`$${data.PRICE_PER_NUMBER} c/u`}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        <div className="flex items-center justify-center gap-6 text-sm">
+          <div className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground">
+            <span className="font-mono">{availableCount}</span> disponibles
+          </div>
+          <div className="px-3 py-1.5 rounded-full bg-sold/60 text-sold-foreground">
+            <span className="font-mono">{soldCount}</span> vendidos
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+          <RaffleGrid numbers={numbers} onNumberClick={handleNumberClick} />
         </div>
-      </main>
-    </div>
-  );
+
+        <RaffleLegend />
+
+        <RaffleCountdown targetDate={data.DRAW_DATE} />
+
+        <div className="bg-card border border-border rounded-lg p-6 text-center text-muted-foreground">
+          <Image
+            alt="Sorteo image"
+            className="m-auto"
+            height={300}
+            src="/uploads/sorteo.png"
+            width={300}
+          />
+          El ganador es quien tenga el boleto con los mismos últimos 2 dígitos
+          que el Premio Mayor del Sorteo Superior de la Lotería Nacional.
+        </div>
+      </div>
+
+      <RaffleSummary
+        selectedNumbers={selectedNumbers}
+        pricePerNumber={data.PRICE_PER_NUMBER}
+        onRemove={handleRemove}
+        onCheckout={handleCheckout}
+      />
+    </main>
+  )
 }
