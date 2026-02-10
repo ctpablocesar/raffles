@@ -17,6 +17,7 @@ interface Data {
   WINNING_NUMBER: number | null
   AWARD: string
   PHONE_NUMBER: string
+  TITLE: string
 }
 
 export default function RafflePage() {
@@ -27,7 +28,8 @@ export default function RafflePage() {
     DRAW_DATE: new Date(),
     WINNING_NUMBER: null,
     AWARD: '',
-    PHONE_NUMBER: ''
+    PHONE_NUMBER: '',
+    TITLE: ''
   })
   const [loading, setLoading] = useState(true)
 
@@ -119,7 +121,7 @@ export default function RafflePage() {
     <main className="min-h-screen bg-background pb-32">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
         <RaffleHeader
-          title="Gran Rifa 2026"
+          title={data.TITLE}
           description="Selecciona tus números de la suerte y participa por increíbles premios"
           prize={data.AWARD}
           price={`$${data.PRICE_PER_NUMBER} c/u`}
